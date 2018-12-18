@@ -23,6 +23,36 @@ def lex(s: str) -> t.Iterator[str]:
 
     yield from flush()
 
+class SchemeError(Exception):
+    pass
+
+StrTree = t.Union[str, t.List['StrTree']]
+
+def parse(tokens: t.Iterable[str]) -> StrTree:
+    """Parse an iterable of Scheme tokens, returning a concrete syntax
+    tree.
+
+    Raises `SchemeError` if there are unmatched parentheses."""
+    trees: t.List[t.List[StrTree]] = [[]]
+
+    for token in tokens:
+        if token == '(':
+            trees.append([])
+        elif token == ')':
+            tree: t.List[StrTree] = trees.pop()
+
+            try:
+                trees[-1].append(tree)
+            except IndexError:
+                raise SchemeError('unmatched closing parenthesis')
+        else:
+            trees[-1].append(token)
+
+    if len(trees) > 1:
+        raise SchemeError('unmatched opening parenthesis')
+
+    return trees[0]
+
 if __name__ == '__main__':
     while True:
         print('>', end=' ')
@@ -31,4 +61,7 @@ if __name__ == '__main__':
         if s == 'exit':
             sys.exit()
         
-        print(' '.join(lex(s)))
+        try:
+            print(parse(lex(s)))
+        except SchemeError as error:
+            print(f'Error: {error}')
